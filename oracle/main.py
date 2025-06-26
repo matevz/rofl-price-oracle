@@ -14,8 +14,9 @@ def main():
 
     parser.add_argument(
         "--contract-address",
+        dest="contract_address",
         type=str,
-        help="Address of the existing smart contract to interact with. If none provided, a new contract will be deployed"
+        help="Address of the existing smart contract to interact with. If none provided, a new contract will be deployed",
     )
 
     parser.add_argument(
@@ -32,34 +33,42 @@ def main():
 
     parser.add_argument(
         "--fetch-period",
-        help="Amount of seconds between fetching token prices",
+        dest="fetch_period",
+        help="Amount of seconds between fetching token prices (minimum value 1)",
         default=3,
+        type=int,
     )
 
     parser.add_argument(
         "--submit-period",
-        help="Amount of seconds between submitting observations on-chain",
+        dest="submit_period",
+        help="Amount of seconds between submitting observations on-chain (minimum value 6)",
         default=12,
-        min=6
+        type=int,
     )
 
     parser.add_argument(
         "--exchange",
         help="Name of the exchange (" + ", ".join(EXCHANGE_FETCHERS.keys()) + ")",
-        default=12,
-        min=6
     )
 
     arguments = parser.parse_args()
+    if arguments.fetch_period < 1:
+        parser.error("--fetch-period must be at least 1 second")
 
-    print(f"Starting price oracle service. Using contract {arguments.contract_address} on {arguments.network}. Pair: {arguments.pair}, Exchange: {arguments.exchange}. Fetch period: {arguments.fetch_period}s, Submit period: {arguments.submit_period}s.")    rofl_utility = RoflUtility()
+    if arguments.submit_period < 6:
+        parser.error("--submit-period must be at least 6 seconds")
 
-    priceOracle = PriceOracle(arguments.contract_address,
+
+    print(f"Starting price oracle service. Using contract {arguments.contract_address} on {arguments.network}. Pair: {arguments.pair}, Exchange: {arguments.exchange}. Fetch period: {arguments.fetch_period}s, Submit period: {arguments.submit_period}s.")
+    rofl_utility = RoflUtility()
+
+    price_oracle = PriceOracle(arguments.contract_address,
                               arguments.network, arguments.exchange,
                               arguments.pair,
                               int(arguments.fetch_period), int(arguments.submit_period),
                               rofl_utility)
-    priceOracle.run()
+    price_oracle.run()
 
 if __name__ == '__main__':
     main()

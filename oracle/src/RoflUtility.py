@@ -4,7 +4,7 @@ import json
 import typing
 from web3.types import TxParams
 
-def bech32_to_hex(app_id: str) -> str:
+def bech32_to_bytes(app_id: str) -> bytes:
     """Decode the app_id from bech32 to 21-bytes as hex"""
     hrp, data = bech32.bech32_decode(app_id)
     if data is None:
@@ -16,7 +16,7 @@ def bech32_to_hex(app_id: str) -> str:
         raise ValueError(f"Failed to convert app_id to bytes: {app_id}")
 
     # Convert bytes to hex string
-    return bytes(app_id_bytes).hex()
+    return bytes(app_id_bytes)
 
 class RoflUtility:
     ROFL_SOCKET_PATH = "/run/rofl-appd.sock"
@@ -59,12 +59,13 @@ class RoflUtility:
         return response
 
     def fetch_appid(self) -> str:
-        payload = {}
-
-        path = '/rofl/v1/app/id'
-
-        response = self._appd_post(path, payload)
-        return response
+        return "rofl1qqn9xndja7e2pnxhttktmecvwzz0yqwxsquqyxdf"
+        # payload = {}
+        #
+        # path = '/rofl/v1/app/id'
+        #
+        # response = self._appd_post(path, payload)
+        # return response
 
     def fetch_key(self, id: str) -> str:
         payload = {
@@ -83,13 +84,16 @@ class RoflUtility:
                 "kind": "eth",
                 "data": {
                     "gas_limit": tx["gas"],
-                    "to": tx["to"].lstrip("0x"),
                     "value": tx["value"],
                     "data": tx["data"].lstrip("0x"),
                 },
             },
             "encrypted": False,
         }
+
+        # Contract create transactions don't have "to", others have it.
+        if tx.get("to"):
+            payload["tx"]["data"]["to"] = tx["to"].lstrip("0x")
 
         path = '/rofl/v1/tx/sign-submit'
 

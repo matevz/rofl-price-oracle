@@ -1,8 +1,9 @@
 import asyncio
 import requests
+import sys
 
 from .ContractUtility import ContractUtility
-from .RoflUtility import bech32_to_hex, RoflUtility
+from .RoflUtility import bech32_to_bytes, RoflUtility
 
 
 async def fetch_binance(pair: str) -> float:
@@ -97,7 +98,7 @@ class PriceOracle:
                  fetch_period: int,
                  submit_period: int,
                  rofl_utility: RoflUtility):
-        contract_utility = ContractUtility(network_name, secret)
+        contract_utility = ContractUtility(network_name)
         abi, bytecode = ContractUtility.get_contract('Oracle')
 
         self.pair = pair
@@ -111,13 +112,14 @@ class PriceOracle:
     def deploy_contract(self):
         # Fetch the current app ID
         app_id = self.rofl_utility.fetch_appid()
-        app_id_hex = bech32_to_hex(app_id)
+        app_id_bytes = bech32_to_bytes(app_id)
 
         # Deploy the contract
-        tx_params = self.contract.constructor(app_id_hex).build_transaction({
+        tx_params = self.contract.constructor(app_id_bytes).build_transaction({
             'gasPrice': self.w3.eth.gas_price,
         })
 
+        print(tx_params, file=sys.stderr)
         tx_hash = self.rofl_utility.submit_tx(tx_params)
         print(f"Got receipt {tx_hash} {dir(tx_hash)}")
         tx_receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
@@ -157,7 +159,8 @@ class PriceOracle:
             await asyncio.sleep(self.fetch_period)
 
     def run(self) -> None:
-        self.deploy_contract()
+        if not self.contract.address:
+            self.deploy_contract()
 
         # Subscribe to PromptSubmitted event
         loop = asyncio.get_event_loop()
