@@ -2,10 +2,10 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "forge-std/Script.sol";
-import {Oracle} from "../src/Oracle.sol";
+import {PriceFeed} from "../src/PriceFeed.sol";
 
-contract OracleScript is Script {
-    Oracle public oracle;
+contract PriceFeedScript is Script {
+    PriceFeed public priceFeed;
 
     function setUp() public {}
 
@@ -13,7 +13,7 @@ contract OracleScript is Script {
         vm.startBroadcast();
 
         // TODO
-        oracle = new Oracle(hex"000000000000000000000000000000000000000000");
+        priceFeed = new PriceFeed();
 
         vm.stopBroadcast();
     }
