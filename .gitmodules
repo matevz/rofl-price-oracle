@@ -5,3 +5,6 @@
 	path = contracts/lib/sapphire-paratime
 	url = https://github.com/oasisprotocol/sapphire-paratime
 	tag = contracts/v0.2.12
+[submodule "contracts/lib/chainlink-evm"]
+	path = contracts/lib/chainlink-evm
+	url = https://github.com/smartcontractkit/chainlink-evm

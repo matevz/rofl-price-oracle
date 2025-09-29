@@ -2,10 +2,10 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "forge-std/Script.sol";
-import {PriceFeed} from "../src/PriceFeed.sol";
+import {PriceFeedDirectory} from "../src/PriceFeedDirectory.sol";
 
 contract PriceFeedScript is Script {
-    PriceFeed public priceFeed;
+    PriceFeedDirectory public priceFeedDirectory;
 
     function setUp() public {}
 
@@ -13,7 +13,7 @@ contract PriceFeedScript is Script {
         vm.startBroadcast();
 
         // TODO
-        priceFeed = new PriceFeed();
+        priceFeedDirectory = new PriceFeedDirectory();
 
         vm.stopBroadcast();
     }

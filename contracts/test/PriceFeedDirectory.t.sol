@@ -1,25 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../src/PriceFeed.sol";
+import "../src/PriceFeedDirectory.sol";
 import {Subcall} from "@oasisprotocol/sapphire-contracts/contracts/Subcall.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {SapphireTest} from "@oasisprotocol-sapphire-foundry-0.1.1/BaseSapphireTest.sol";
 
-contract PriceFeedTest is SapphireTest {
-    PriceFeed public priceFeed;
+contract PriceFeedDirectoryTest is SapphireTest {
+    PriceFeedDirectory public priceFeed;
     SimpleAggregator public simpleAggr;
 
     function setUp() public override {
         super.setUp();
         bytes21 roflAppId = bytes21(0);
         simpleAggr = new SimpleAggregator(roflAppId);
-        priceFeed = new PriceFeed();
+        priceFeed = new PriceFeedDirectory();
     }
 
     function test_addFeed() public {
-        priceFeed.addFeed("BTCUSD", simpleAggr);
-        assertEq(address(priceFeed.feeds("BTCUSD", 0)), address(simpleAggr), "feed not stored");
+        priceFeed.addFeed("bitstamp.net/btc_usd", simpleAggr);
+        console.log("ok");
+        bytes32 hash = keccak256("000000000000000000000000000000000000000000/bitstamp.net/btc_usd");
+        assertEq(address(priceFeed.feeds(hash)), address(simpleAggr), "feed not stored");
     }
 
     function test_submitObservation() public {

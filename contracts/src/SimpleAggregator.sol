@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import { RoflAggregatorV3Interface } from "./RoflAggregatorV3Interface.sol";
 import { Subcall } from "@oasisprotocol/sapphire-contracts/contracts/Subcall.sol";
 
-contract SimpleAggregator is AggregatorV3Interface {
+contract SimpleAggregator is RoflAggregatorV3Interface {
     // Configuration.
     string public description;
     uint256 public version;
     uint8 public decimals;
-    bytes21 public roflAppID;
+    bytes21 private roflAppId;
 
     // Observations.
     struct Observation {
@@ -25,12 +25,17 @@ contract SimpleAggregator is AggregatorV3Interface {
     // Checks whether the transaction was signed by the ROFL's app key inside
     // TEE.
     modifier onlyTEE() {
-        Subcall.roflEnsureAuthorizedOrigin(roflAppID);
+        Subcall.roflEnsureAuthorizedOrigin(roflAppId);
         _;
     }
 
     constructor(bytes21 _roflAppID) {
-        roflAppID = _roflAppID;
+        roflAppId = _roflAppID;
+    }
+
+    // Returns the App ID of ROFL.
+    function getRoflAppId() external view returns (bytes21) {
+        return roflAppId;
     }
 
     function submitObservation(uint80 _roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt) external onlyTEE {
@@ -59,7 +64,7 @@ contract SimpleAggregator is AggregatorV3Interface {
     }
 
     function setRoflAppID(bytes21 _roflAppID) external onlyTEE {
-        roflAppID = _roflAppID;
+        roflAppId = _roflAppID;
     }
 
     function getRoundData(uint80 _roundId) external view override returns (uint80 roundId, int256 ans, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) {
