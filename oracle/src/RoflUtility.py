@@ -4,6 +4,9 @@ import json
 import typing
 from web3.types import TxParams
 
+from .RoflUtilityInterface import RoflUtilityInterface
+
+
 def bech32_to_bytes(app_id: str) -> bytes:
     """Decode the app_id from bech32 to 21-bytes as hex"""
     hrp, data = bech32.bech32_decode(app_id)
@@ -18,7 +21,7 @@ def bech32_to_bytes(app_id: str) -> bytes:
     # Convert bytes to hex string
     return bytes(app_id_bytes)
 
-class RoflUtility:
+class RoflUtility(RoflUtilityInterface):
     ROFL_SOCKET_PATH = "/run/rofl-appd.sock"
 
     def __init__(self, url: str = ''):
@@ -59,13 +62,9 @@ class RoflUtility:
         return response
 
     def fetch_appid(self) -> str:
-        return "rofl1qqn9xndja7e2pnxhttktmecvwzz0yqwxsquqyxdf"
-        # payload = {}
-        #
-        # path = '/rofl/v1/app/id'
-        #
-        # response = self._appd_post(path, payload)
-        # return response
+        path = '/rofl/v1/app/id'
+        response = self._appd_post(path, {})
+        return response
 
     def fetch_key(self, id: str) -> str:
         payload = {
