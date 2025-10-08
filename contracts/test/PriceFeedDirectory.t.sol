@@ -18,10 +18,17 @@ contract PriceFeedDirectoryTest is SapphireTest {
     }
 
     function test_addFeed() public {
-        priceFeed.addFeed("bitstamp.net/btc_usd", simpleAggr);
-        console.log("ok");
+        priceFeed.addFeed("bitstamp.net/btc_usd", simpleAggr, false);
         bytes32 hash = keccak256("000000000000000000000000000000000000000000/bitstamp.net/btc_usd");
         assertEq(address(priceFeed.feeds(hash)), address(simpleAggr), "feed not stored");
+
+        priceFeed.addFeed("binance.com/btc_usd", simpleAggr, true);
+        hash = keccak256("000000000000000000000000000000000000000000/binance.com/btc_usd");
+        assertEq(address(priceFeed.feeds(hash)), address(simpleAggr), "feed not stored");
+        assertEq(address(simpleAggr), address(priceFeed.discoverableFeeds(0)), "feed not discoverable");
+
+        vm.expectRevert();
+        priceFeed.addFeed("bitstamp.net/btc_usd", simpleAggr, false);
     }
 
     function test_submitObservation() public {
