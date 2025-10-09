@@ -1,0 +1,50 @@
+name: rofl-price-oracle
+version: 0.1.0
+tee: tdx
+kind: container
+resources:
+  memory: 512
+  cpus: 1
+  storage:
+    kind: disk-persistent
+    size: 2000
+artifacts:
+  firmware: https://github.com/oasisprotocol/oasis-boot/releases/download/v0.6.2/ovmf.tdx.fd#db47100a7d6a0c1f6983be224137c3f8d7cb09b63bb1c7a5ee7829d8e994a42f
+  kernel: https://github.com/oasisprotocol/oasis-boot/releases/download/v0.6.2/stage1.bin#e5d4d654ca1fa2c388bf64b23fc6e67815893fc7cb8b7cfee253d87963f54973
+  stage2: https://github.com/oasisprotocol/oasis-boot/releases/download/v0.6.2/stage2-podman.tar.bz2#b2ea2a0ca769b6b2d64e3f0c577ee9c08f0bb81a6e33ed5b15b2a7e50ef9a09f
+  container:
+    runtime: https://github.com/oasisprotocol/oasis-sdk/releases/download/rofl-containers%2Fv0.8.1/rofl-containers#993e66f3b037cdc63896216cde4dc91b4976cc82a698c63123a9bba8710852c4
+    compose: compose.yaml
+deployments:
+  default:
+    app_id: rofl1qzcaz2y24anz6qy4w8jhuc5vj9cwhek8ustkl8a7
+    network: testnet
+    paratime: sapphire
+    admin: dave
+    oci_repository: rofl.sh/6bcb968a-a4a7-4230-8a5d-41b3dde45c83:1760027673
+    trust_root:
+      height: 28791311
+      hash: f8455b063d8ae8f07a7524f3f4f634e4e45468e5218a9dff5b39039d52ea2c50
+    policy:
+      quotes:
+        pcs:
+          tcb_validity_period: 30
+          min_tcb_evaluation_data_number: 18
+          tdx: {}
+      enclaves:
+        - id: 8Wdd8oQ5pKW9xENBeEQmRV1+UzH4T8GiHjDf0nrzbvUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+        - id: OX1IN94fvI7G/k3WKKoPwEMFw60rvDII775ONHaQI4oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+      endorsements:
+        - any: {}
+      fees: endorsing_node
+      max_expiration: 3
+    secrets:
+      - name: NETWORK
+        value: pGJwa1ggvo4kuqNZQ+ge6lvTYxe36t3F205Z/V8vJq8nVi3scBVkbmFtZVd8ClP4cDgIHrLwxxcnA4fYj4cI4/XnCWVub25jZU8Jx4R0kDETPVCWVi72tw1ldmFsdWVYICzV6l1OwUrdA306ilZ+Wmw0tBI1cSkko6PRSEFNffag
+      - name: PAIR
+        value: pGJwa1gg4yTxtuVrv8vtjxLJZotHQHgHxxK+4fM3xVaG0l7mzhhkbmFtZVRWrI/lniPlYS4o0Mw6ARx9H/8zf2Vub25jZU8FoKg+j8E7duP0aZUxTr9ldmFsdWVYkcPxbxOlZ/DDE5LJFzSzoQQX5NrXGArgOdod1KgZ4KbPawDEV21lOzsS7faicWptYj0qcv1vLeUhHHCVfeqe2NQ63D2pNDVDbP0c7LihU4HE+6UzIceCmImbyeRe5OiB10W4PrY3l5NNRvVph+NwnHDiWOyPL7Zz36w/mXHGoF4T+Q9XNGfvMUo7C4+chiBPnS4=
+    machines:
+      default:
+        provider: oasis1qp2ens0hsp7gh23wajxa4hpetkdek3swyyulyrmz
+        offer: playground_short
+        id: "0000000000000335"
