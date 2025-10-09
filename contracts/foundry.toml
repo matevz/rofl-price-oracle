@@ -5,6 +5,7 @@ libs = ["lib", "dependencies"]
 ffi = true
 
 [dependencies]
-"@oasisprotocol-sapphire-foundry" = "0.1.1"
+"@oasisprotocol-sapphire-foundry" = "0.1.2"
+"@oasisprotocol-sapphire-contracts" = "0.2.15"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

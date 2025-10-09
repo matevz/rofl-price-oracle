@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../src/PriceFeedDirectory.sol";
 import {Subcall} from "@oasisprotocol/sapphire-contracts/contracts/Subcall.sol";
 import {Test, console} from "forge-std/Test.sol";
-import {SapphireTest} from "@oasisprotocol-sapphire-foundry-0.1.1/BaseSapphireTest.sol";
+import {SapphireTest} from "@oasisprotocol-sapphire-foundry-0.1.2/BaseSapphireTest.sol";
 
 contract PriceFeedDirectoryTest is SapphireTest {
     PriceFeedDirectory public priceFeed;
