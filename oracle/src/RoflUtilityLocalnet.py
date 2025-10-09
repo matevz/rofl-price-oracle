@@ -1,9 +1,11 @@
+import cbor2
+import typing
 from web3 import Web3
 from web3.types import TxParams
 
-from .RoflUtilityInterface import RoflUtilityInterface
+from .RoflUtility import RoflUtility
 
-class RoflUtilityLocalnet(RoflUtilityInterface):
+class RoflUtilityLocalnet(RoflUtility):
     def __init__(self, w3: Web3 = None):
         self.w3 = w3
         if w3 is None:
@@ -15,7 +17,7 @@ class RoflUtilityLocalnet(RoflUtilityInterface):
     def fetch_key(self, id: str) -> str:
         pass
 
-    def submit_tx(self, tx: TxParams) -> str:
+    def submit_tx(self, tx: TxParams) -> typing.Any:
         # Sign and send the transaction
         tx_hash = self.w3.eth.send_transaction(tx)
 
@@ -24,6 +26,6 @@ class RoflUtilityLocalnet(RoflUtilityInterface):
 
         # Check if transaction was successful
         if tx_receipt['status'] == 1:
-            return '{"data": "a1626f6b40"}'
+            return {"data": cbor2.loads(bytes.fromhex("a1626f6b40")), "tx_receipt": tx_receipt}
         else:
-            return '{"data": "a1646661696ca364636f646508666d6f64756c656365766d676d6573736167657272657665727465643a20614a416f4c773d3d"}'
+            return {"tx_receipt": tx_receipt}

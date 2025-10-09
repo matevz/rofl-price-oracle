@@ -2,6 +2,7 @@
 
 from src.PriceOracle import DEFAULT_PRICE_FEED_ADDRESS, EXCHANGE_FETCHERS, PriceOracle
 import argparse
+import asyncio
 
 def main():
     """
@@ -13,9 +14,8 @@ def main():
 
     parser.add_argument(
         "--address",
-        dest="address",
         type=str,
-        help="Address of the aggregator contract to interact with. If none provided, the contract is looked up in the price feed directory. If it doesn't exist there, then a new aggregator contract is deployed and registered",
+        help="Comma-separated address of the aggregator contract for the pairs to interact with. If none provided, the contract is looked up in the price feed directory. If it doesn't exist there, then a new aggregator contract is deployed and registered",
     )
 
     parser.add_argument(
@@ -34,8 +34,8 @@ def main():
 
     parser.add_argument(
         "--pair",
-        help="Trading pair to observe",
-        default="btc_usd",
+        help="Comma-separated exchange name + trading pair to observe. Example:\nbitstamp.net/btc/usd,uniswap.org/polygon/native/1bfd67037b42cf73acf2047067bd4f2c47d9bfd6",
+        default="bitstamp.net/btc/usd",
         type=str,
     )
 
@@ -43,7 +43,7 @@ def main():
         "--fetch-period",
         dest="fetch_period",
         help="Amount of seconds between fetching token prices (minimum value 1)",
-        default=3,
+        default=10,
         type=int,
     )
 
@@ -51,14 +51,14 @@ def main():
         "--submit-period",
         dest="submit_period",
         help="Amount of seconds between submitting observations on-chain (minimum value 6)",
-        default=12,
+        default=60,
         type=int,
     )
 
     parser.add_argument(
-        "--exchange",
-        help="Name of the exchange (" + ", ".join(EXCHANGE_FETCHERS.keys()) + ")",
-        default="bitstamp.net",
+        "--api-key",
+        dest="api_key",
+        help="Comma-separated API keys for exchanges. Example:\nbitstamp.net=AbCd123,binance.com=EfGh1234",
         type=str,
     )
 
@@ -69,19 +69,20 @@ def main():
     if arguments.submit_period < 6:
         parser.error("--submit-period must be at least 6 seconds")
 
-    if arguments.price_feed_address is None:
+    if arguments.price_feed_address is None or len(arguments.price_feed_address) == 0:
         arguments.price_feed_address = DEFAULT_PRICE_FEED_ADDRESS[arguments.network]
 
-    print(f"Starting price oracle service. Using aggregator contract {arguments.address} and price feed directory {arguments.price_feed_address} on {arguments.network}. Pair: {arguments.pair}, Exchange: {arguments.exchange}. Fetch period: {arguments.fetch_period}s, Submit period: {arguments.submit_period}s.")
+    print(f"Starting price oracle service. Using aggregator contract {arguments.address} and price feed directory {arguments.price_feed_address} on {arguments.network}. Pair(s): {arguments.pair}. Fetch period: {arguments.fetch_period}s, Submit period: {arguments.submit_period}s.")
 
     price_oracle = PriceOracle(
         arguments.address,
         arguments.price_feed_address,
-        arguments.network, arguments.exchange,
+        arguments.network,
         arguments.pair,
+        arguments.api_key,
         int(arguments.fetch_period), int(arguments.submit_period),
     )
-    price_oracle.run()
+    asyncio.run(price_oracle.run())
 
 if __name__ == '__main__':
     main()

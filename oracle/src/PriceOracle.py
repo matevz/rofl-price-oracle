@@ -1,18 +1,20 @@
 import asyncio
 import requests
-import sys
+import time
+from web3 import Web3
 
 from .ContractUtility import ContractUtility
-from .RoflUtility import bech32_to_bytes, RoflUtility
+from .RoflUtility import bech32_to_bytes
+from .RoflUtilityAppd import RoflUtilityAppd
 from .RoflUtilityLocalnet import RoflUtilityLocalnet
 
 
-async def fetch_binance(pair: str) -> float:
+async def fetch_binance(pair_base: str, pair_quote: str) -> float:
     try:
-        response = requests.get(f'https://api.binance.com/api/v3/ticker/price?symbol={pair}')
+        response = requests.get(f'https://api.binance.com/api/v3/ticker?symbol={pair_base.upper()}{pair_quote.upper()}') # TODO: api token
         if response.status_code == 200:
             data = response.json()
-            price = float(data['price'])
+            price = float(data['lastPrice'])
 
             # Store price with timestamp
             return price
@@ -21,9 +23,9 @@ async def fetch_binance(pair: str) -> float:
     except Exception as e:
         print(f"Error fetching Binance price: {e}")
 
-async def fetch_coinbase(pair: str) -> float:
+async def fetch_coinbase(pair_base: str, pair_quote: str) -> float:
     try:
-        response = requests.get(f'https://api.coinbase.com/v2/exchange-rates?currency={pair}')
+        response = requests.get(f'https://api.coinbase.com/v2/exchange-rates?currency={pair_base}{pair_quote}') # TODO: api token
         if response.status_code == 200:
             data = response.json()
             if 'data' in data and 'rates' in data['data']:
@@ -45,9 +47,9 @@ async def fetch_coinbase(pair: str) -> float:
     except Exception as e:
         print(f"Error fetching Coinbase price: {e}")
 
-async def fetch_kraken(pair: str) -> float:
+async def fetch_kraken(pair_base: str, pair_quote: str) -> float:
     try:
-        response = requests.get(f'https://api.kraken.com/0/public/Ticker?pair={pair}')
+        response = requests.get(f'https://api.kraken.com/0/public/Ticker?pair={pair_base}{pair_quote}') # TODO: api token
         if response.status_code == 200:
             data = response.json()
             if 'result' in data:
@@ -64,9 +66,9 @@ async def fetch_kraken(pair: str) -> float:
     except Exception as e:
         print(f"Error fetching Kraken price: {e}")
 
-async def fetch_bitstamp(pair: str) -> float:
+async def fetch_bitstamp(pair_base: str, pair_quote: str) -> float:
     try:
-        response = requests.get(f'https://www.bitstamp.net/api/v2/ticker/{pair.replace('_','')}/')
+        response = requests.get(f'https://www.bitstamp.net/api/v2/ticker/{pair_base}{pair_quote}/') # TODO: api token
         if response.status_code == 200:
             data = response.json()
             if 'last' in data:
@@ -92,124 +94,191 @@ EXCHANGE_FETCHERS = {
 # Predeployed price directory contract addresses based on the network.
 DEFAULT_PRICE_FEED_ADDRESS = {
     "sapphire": None,
-    "sapphire-testnet": None,
+    "sapphire-testnet": "0x91366f08C5FA8D2d0226439eb6AF4291677F8B50",
     "sapphire-localnet": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
 }
+
+# Number of decimals stored on-chain.
+NUM_DECIMALS = 10
+
+class Pair:
+    def __init__(self, exchange: str, chain: str | None, pair_base: str, pair_quote: str):
+        self.exchange = exchange
+        self.chain = chain
+        self.pair_base = pair_base
+        self.pair_quote = pair_quote
+
+    def __str__(self):
+        if self.chain:
+            return f"{self.exchange}/{self.chain}/{self.pair_base}/{self.pair_quote}"
+        return f"{self.exchange}/{self.pair_base}/{self.pair_quote}"
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __eq__(self, other):
+        return str(self)==str(other)
+
+    def compute_feed_hash(self, app_id_bytes: bytes):
+        return Web3.keccak(text="/".join(
+            (app_id_bytes.hex(), str(self))
+        ))
+
 
 class PriceOracle:
     def __init__(self,
                  address: str,
                  price_feed_address: str,
                  network_name: str,
-                 exchange: str,
-                 pair: str,
+                 exchanges_pairs: str,
+                 api_keys: str,
                  fetch_period: int,
                  submit_period: int):
         contract_utility = ContractUtility(network_name)
-        abi, bytecode = ContractUtility.get_contract('SimpleAggregator')
-        price_feed_abi, _ = ContractUtility.get_contract('PriceFeedDirectory')
+        self.contract_abi, self.contract_bytecode = ContractUtility.get_contract('SimpleAggregator')
+        self.contracts = {} # pair -> contract instance
 
+        self.pairs = []
+        for ep in exchanges_pairs.split(","):
+            exchange: str
+            pair_base: str
+            pair_quote: str
+            chain: str | None = None
+            if ep.count("/") == 2:
+                [exchange, pair_base, pair_quote] = ep.split("/")
+            elif ep.count("/") == 3:
+                [exchange, chain, pair_base, pair_quote] = ep.split("/")
+            else:
+                print(f"warning: invalid pair format '{ep}'. Ignoring.")
+                continue
 
-        self.pair = pair
+            if exchange not in EXCHANGE_FETCHERS:
+                print(f"error: unsupported exchange {exchange}. Possible values are: {" ".join(EXCHANGE_FETCHERS.keys())}")
+                exit(1)
+
+            self.pairs.append(Pair(exchange, chain, pair_base, pair_quote))
+
+        self.api_key = {}
+        if api_keys is not None and len(api_keys) > 0:
+            for api_key in api_keys.split(","):
+                ak = api_key.split("=")
+                self.api_key[ak[0]] = ak[1]
+
         self.fetch_period = fetch_period
         self.submit_period = submit_period
-        self.exchange = exchange
-        self.contract = contract_utility.w3.eth.contract(address=address, abi=abi, bytecode=bytecode)
+        if address is not None and len(address) > 0:
+            for a in address.split(","):
+                self.contracts[self.pairs[0]] = contract_utility.w3.eth.contract(address=a, abi=self.contract_abi, bytecode=self.contract_bytecode)
+
+        price_feed_abi, _ = ContractUtility.get_contract('PriceFeedDirectory')
         self.price_feed_contract = contract_utility.w3.eth.contract(address=price_feed_address, abi=price_feed_abi)
         self.w3 = contract_utility.w3
-        self.rofl_utility = RoflUtilityLocalnet(self.w3) if network_name == "sapphire-localnet" else RoflUtility()
+        self.rofl_utility = RoflUtilityLocalnet(self.w3) if network_name == "sapphire-localnet" else RoflUtilityAppd()
 
-    def detect_or_deploy_contract(self):
+
+
+    def detect_contract(self, pair: Pair, app_id_bytes: bytes):
+        address = self.price_feed_contract.functions.feeds(
+            pair.compute_feed_hash(app_id_bytes)
+        ).call()
+
+        if address != '0x0000000000000000000000000000000000000000':
+            self.contracts[pair] = self.w3.eth.contract(address=address, abi=self.contract_abi, bytecode=self.contract_bytecode)
+
+
+    def detect_or_deploy_contract(self, pair: Pair):
         # Fetch the current app ID
         app_id = self.rofl_utility.fetch_appid()
+        print("app_id: ", app_id)
         app_id_bytes = bech32_to_bytes(app_id)
 
-        if self.contract.address is not None:
+        if pair in self.contracts:
             return
 
-        address = self.price_feed_contract.functions.feeds(
-            self.w3.keccak(
-                text="/".join((app_id_bytes.hex(), self.exchange, self.pair))
-            )
-        ).call()
-        if address != '0x0000000000000000000000000000000000000000':
-            self.contract = self.w3.eth.contract(address=address, abi=self.contract.abi)
-            print(f"Detected aggregator contract {address}")
+        self.detect_contract(pair, app_id_bytes)
+        if pair in self.contracts:
+            print(f"Detected aggregator contract {self.contracts[pair].address}")
             return
 
-        # Deploy the contract
-        tx_params = self.contract.constructor(app_id_bytes).build_transaction({
+        # Deploy the contract implicitly by calling add_feed().
+        tx_params = self.price_feed_contract.functions.addFeed(
+            "/".join((pair.exchange, pair.pair_base, pair.pair_quote)),
+            "0x0000000000000000000000000000000000000000",
+            False,
+        ).build_transaction({
             'gasPrice': self.w3.eth.gas_price,
         })
-
-        print(tx_params, file=sys.stderr)
         result = self.rofl_utility.submit_tx(tx_params)
-        print(f"Contract deployed. Result: {result}")
+        print(f"Contract deploy submitted. Result: {result}")
 
-        # Update contract instance with deployed address
-        self.contract = self.w3.eth.contract(
-            address=tx_receipt.contractAddress, # todo
-            abi=self.contract.abi,
-            bytecode=self.contract.bytecode
-        )
+        self.detect_contract(pair, app_id_bytes)
+        if pair in self.contracts:
+            contract = self.contracts[pair]
+            print(f"Detected aggregator contract {contract.address}")
 
-        tx = self.price_feed_contract.add_feed(
-            self.w3.keccak(
-                text="/".join((self.exchange, self.pair, self.contract.address))
-            )
-        )
-        tx.wait()
+            contract.functions.setDecimals(NUM_DECIMALS).build_transaction({
+                'gasPrice': self.w3.eth.gas_price,
+            })
+            result = self.rofl_utility.submit_tx(tx_params)
+            print(f"Set decimals to {NUM_DECIMALS}. Result: {result}")
+
+            contract.functions.setDescription(str(pair)).build_transaction({
+                'gasPrice': self.w3.eth.gas_price,
+            })
+            result = self.rofl_utility.submit_tx(tx_params)
+            print(f"Set description to {str(pair)}. Result: {result}")
+        else:
+            print(f"Aggregator contract not available. Aborting.")
+            exit(2)
 
 
-    async def observations_loop(self, poll_interval):
-        # Initialize price storage
-        observations = []  # List of (uint256 price, uint64 timestamp) tuples
+    async def observations_loop(self, pair:Pair):
+        observations = []  # List of (uint256 price, uint64 timestamp) tuples for the current round
         last_submit = asyncio.get_event_loop().time()
-        print(f"Starting price observation loop for {self.pair}...")
+        print(f"Starting price observation loop for {pair.pair_base}/{pair.pair_quote} on {pair.exchange}...")
+
+        contract = self.contracts[pair]
+        num_decimals = contract.functions.decimals().call()
+        latest_round_data = contract.functions.latestRoundData().call()
+        round_id = latest_round_data[0]
 
         # Price fetching loop
         while True:
-            if not EXCHANGE_FETCHERS[self.exchange]:
-                print(f"Unknown exchange: {self.exchange}")
-                break
-
-            price = await EXCHANGE_FETCHERS[self.exchange](self.pair)
-            obs = (0, int(price * 10**10), int(last_submit), int(asyncio.get_event_loop().time()))
-            print(f"{self.pair} Price: ${price:.2f}")
+            round_id+=1
+            price = await EXCHANGE_FETCHERS[pair.exchange](pair.pair_base, pair.pair_quote)
+            obs = (int(price * 10**num_decimals), int(asyncio.get_event_loop().time()))
+            print(f"{pair} price: ${price:.10f}")
             observations.append(obs)
 
             if asyncio.get_event_loop().time() - last_submit > self.submit_period:
-                self.submit_observations(observations)
+                sorted_observations = sorted(observations)
+                median_price = sorted_observations[int(len(observations)/2)][0]
+
+                tx_params = contract.functions.submitObservation(
+                    round_id,
+                    median_price,
+                    observations[0][1],
+                    observations[-1][1],
+                ).build_transaction({
+                    'gasPrice': self.w3.eth.gas_price,
+                })
+
                 last_submit = asyncio.get_event_loop().time()
+                result = self.rofl_utility.submit_tx(tx_params)
+                print(f"Submitting observations. Result: {result}")
                 observations = []
 
             await asyncio.sleep(self.fetch_period)
 
-    def run(self) -> None:
-        if not self.contract.address:
-            self.detect_or_deploy_contract()
+    async def run(self) -> None:
+        tasks = []
+        for pair in self.pairs:
+            self.detect_or_deploy_contract(pair)
+            tasks.append(
+                asyncio.create_task(
+                    self.observations_loop(pair)
+                )
+            )
+            time.sleep(1)
 
-        # Subscribe to PromptSubmitted event
-        # Create a new event loop first
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(
-                asyncio.gather(self.observations_loop(2)))
-        finally:
-            loop.close()
-
-    def submit_observations(self, observations: list):
-        # Build the transaction
-        tx_params = self.contract.functions.submitObservation(
-            observations[-1][0],
-            observations[-1][1],
-            observations[-1][2],
-            observations[-1][3]
-        ).build_transaction({
-            'gasPrice': self.w3.eth.gas_price,
-            'gas': max(3000000, 1000*len(observations))
-        })
-
-        result = self.rofl_utility.submit_tx(tx_params)
-        print(f"Submitted observations. Result: {result}")
+        await asyncio.gather(*tasks)

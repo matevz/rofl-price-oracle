@@ -1,7 +1,7 @@
 import pytest
 import unittest
 
-from ..src.RoflUtility import RoflUtility, bech32_to_bytes
+from ..src.RoflUtility import bech32_to_bytes
 
 class TestRoflUtility(unittest.TestCase):
     def test_bech32_to_bytes(self):
