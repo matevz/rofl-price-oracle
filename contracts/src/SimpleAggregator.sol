@@ -13,10 +13,10 @@ contract SimpleAggregator is RoflAggregatorV3Interface {
 
     // Observations.
     struct Observation {
-        uint80 roundId; // Round or unix timestamp for off-chain pairs.
-        int256 answer;
-        uint256 startedAt;
-        uint256 updatedAt;
+        uint80 roundId; // The round in which the answer was updated.
+        int256 answer;  // Price for the pair in predefined decimals.
+        uint256 startedAt; // The timestamp when the round started.
+        uint256 updatedAt; // The timestamp when the answer was computed.
     }
 
     mapping(uint80 => Observation) public observations;

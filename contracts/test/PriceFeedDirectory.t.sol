@@ -17,7 +17,7 @@ contract PriceFeedDirectoryTest is SapphireTest {
         priceFeed = new PriceFeedDirectory();
     }
 
-    function test_addFeed() public {
+    function test_addFeed_existing_agg() public {
         priceFeed.addFeed("bitstamp.net/btc_usd", simpleAggr, false);
         bytes32 hash = keccak256("000000000000000000000000000000000000000000/bitstamp.net/btc_usd");
         assertEq(address(priceFeed.feeds(hash)), address(simpleAggr), "feed not stored");
@@ -29,6 +29,12 @@ contract PriceFeedDirectoryTest is SapphireTest {
 
         vm.expectRevert();
         priceFeed.addFeed("bitstamp.net/btc_usd", simpleAggr, false);
+    }
+
+    function test_addFeed_new_agg() public {
+        priceFeed.addFeed("bitstamp.net/btc_usd", RoflAggregatorV3Interface(address(0)), false);
+        bytes32 hash = keccak256("000000000000000000000000000000000000000000/bitstamp.net/btc_usd");
+        assertNotEq(address(priceFeed.feeds(hash)), address(0), "new feed not deployed");
     }
 
     function test_submitObservation() public {
