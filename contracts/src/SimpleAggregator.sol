@@ -68,7 +68,7 @@ contract SimpleAggregator is RoflAggregatorV3Interface {
     }
 
     function getRoundData(uint80 _roundId) external view override returns (uint80 roundId, int256 ans, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) {
-        return (_roundId, observations[latestRoundId].answer, observations[latestRoundId].startedAt, observations[latestRoundId].updatedAt, _roundId);
+        return (_roundId, observations[_roundId].answer, observations[_roundId].startedAt, observations[_roundId].updatedAt, _roundId);
     }
 
     function latestRoundData() external view override returns (uint80 roundId, int256 ans, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) {
