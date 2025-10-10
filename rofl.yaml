@@ -40,9 +40,9 @@ deployments:
       max_expiration: 3
     secrets:
       - name: NETWORK
-        value: pGJwa1ggvo4kuqNZQ+ge6lvTYxe36t3F205Z/V8vJq8nVi3scBVkbmFtZVd8ClP4cDgIHrLwxxcnA4fYj4cI4/XnCWVub25jZU8Jx4R0kDETPVCWVi72tw1ldmFsdWVYICzV6l1OwUrdA306ilZ+Wmw0tBI1cSkko6PRSEFNffag
+        value: pGJwa1gge4hgMZG1NbooPPM3o7k8X+klYBSoKAnZOOIF96XxA0ZkbmFtZVcpf2fVmLDNyVf6Vxp+OcIy0yvaWy00GWVub25jZU9VDfwSa4l/2G/++qXYITJldmFsdWVYILFd9+PdQhg9Dve+PDVSmx2p6imqfbbGTmrxCXF3Kc/u
       - name: PAIR
-        value: pGJwa1gg4yTxtuVrv8vtjxLJZotHQHgHxxK+4fM3xVaG0l7mzhhkbmFtZVRWrI/lniPlYS4o0Mw6ARx9H/8zf2Vub25jZU8FoKg+j8E7duP0aZUxTr9ldmFsdWVYkcPxbxOlZ/DDE5LJFzSzoQQX5NrXGArgOdod1KgZ4KbPawDEV21lOzsS7faicWptYj0qcv1vLeUhHHCVfeqe2NQ63D2pNDVDbP0c7LihU4HE+6UzIceCmImbyeRe5OiB10W4PrY3l5NNRvVph+NwnHDiWOyPL7Zz36w/mXHGoF4T+Q9XNGfvMUo7C4+chiBPnS4=
+        value: pGJwa1ggF7YzzV/jBApIZFcLu5P7L0+r/brgbtNnBQIm2i6+s35kbmFtZVRqKGeG5ZCPUV7KQaTXW2T8wPtbz2Vub25jZU//2Q6dGzqs0Kvi+RsjCTRldmFsdWVYewzc4ceu/wsFB6YCSFdnS9TY7XfeyViYks/t38WGCrmJI7R7lOA2lbxfZq9QFt3Wp9ZOhqTL96LIIGgxGj2xVFpL8C2DvN550t04m3h6qbWMaJVKzCrtYVP7YGEqkT2wcsUwp8jTTlxzaA+l/1poglG/a2iCuTMlxU+2vA==
     machines:
       default:
         provider: oasis1qp2ens0hsp7gh23wajxa4hpetkdek3swyyulyrmz

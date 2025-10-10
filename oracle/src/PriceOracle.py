@@ -2,6 +2,7 @@ import asyncio
 import requests
 import time
 from web3 import Web3
+from web3.contract import Contract
 
 from .ContractUtility import ContractUtility
 from .RoflUtility import bech32_to_bytes
@@ -9,37 +10,35 @@ from .RoflUtilityAppd import RoflUtilityAppd
 from .RoflUtilityLocalnet import RoflUtilityLocalnet
 
 
-async def fetch_binance(pair_base: str, pair_quote: str) -> float:
+async def fetch_binance_com(pair_base: str, pair_quote: str) -> float:
     try:
-        response = requests.get(f'https://api.binance.com/api/v3/ticker?symbol={pair_base.upper()}{pair_quote.upper()}') # TODO: api token
+        response = requests.get(f'https://api.binance.com/api/v3/ticker?symbol={pair_base.upper()}{pair_quote.upper()}')
         if response.status_code == 200:
             data = response.json()
-            price = float(data['lastPrice'])
-
-            # Store price with timestamp
-            return price
+            return float(data['lastPrice'])
         else:
             print(f"Error fetching price: HTTP {response.status_code}")
     except Exception as e:
-        print(f"Error fetching Binance price: {e}")
+        print(f"Error fetching Binance.com price: {e}")
+
+async def fetch_binance_us(pair_base: str, pair_quote: str) -> float:
+    try:
+        response = requests.get(f'https://api.binance.us/api/v3/ticker?symbol={pair_base.upper()}{pair_quote.upper()}')
+        if response.status_code == 200:
+            data = response.json()
+            return float(data['lastPrice'])
+        else:
+            print(f"Error fetching price: HTTP {response.status_code}")
+    except Exception as e:
+        print(f"Error fetching Binance.us price: {e}")
 
 async def fetch_coinbase(pair_base: str, pair_quote: str) -> float:
     try:
-        response = requests.get(f'https://api.coinbase.com/v2/exchange-rates?currency={pair_base}{pair_quote}') # TODO: api token
+        response = requests.get(f'https://api.exchange.coinbase.com/products/{pair_base.upper()}-{pair_quote.upper()}/ticker')
         if response.status_code == 200:
             data = response.json()
-            if 'data' in data and 'rates' in data['data']:
-                # Coinbase returns rates with currency codes as keys
-                # For trading pairs like BTCUSD, we need to extract the quote currency
-                rates = data['data']['rates']
-                if 'USD' in rates:
-                    price = float(rates['USD'])
-                else:
-                    # Fallback to first available rate
-                    price = float(list(rates.values())[0])
-
-                # Store price with timestamp
-                return price
+            if 'price' in data:
+                return float(data['price'])
             else:
                 print(f"Error fetching price: {data.get('error', 'Unknown error')}")
         else:
@@ -49,7 +48,7 @@ async def fetch_coinbase(pair_base: str, pair_quote: str) -> float:
 
 async def fetch_kraken(pair_base: str, pair_quote: str) -> float:
     try:
-        response = requests.get(f'https://api.kraken.com/0/public/Ticker?pair={pair_base}{pair_quote}') # TODO: api token
+        response = requests.get(f'https://api.kraken.com/0/public/Ticker?pair={pair_base}{pair_quote}')
         if response.status_code == 200:
             data = response.json()
             if 'result' in data:
@@ -68,7 +67,7 @@ async def fetch_kraken(pair_base: str, pair_quote: str) -> float:
 
 async def fetch_bitstamp(pair_base: str, pair_quote: str) -> float:
     try:
-        response = requests.get(f'https://www.bitstamp.net/api/v2/ticker/{pair_base}{pair_quote}/') # TODO: api token
+        response = requests.get(f'https://www.bitstamp.net/api/v2/ticker/{pair_base.lower()}{pair_quote.lower()}/')
         if response.status_code == 200:
             data = response.json()
             if 'last' in data:
@@ -85,7 +84,8 @@ async def fetch_bitstamp(pair_base: str, pair_quote: str) -> float:
         print(f"Error fetching Bitstamp price: {e}")
 
 EXCHANGE_FETCHERS = {
-    'binance.com': fetch_binance,
+    'binance.com': fetch_binance_com,
+    'binance.us': fetch_binance_us,
     'kraken.com': fetch_kraken,
     'coinbase.com': fetch_coinbase,
     'bitstamp.net': fetch_bitstamp,
@@ -94,7 +94,7 @@ EXCHANGE_FETCHERS = {
 # Predeployed price directory contract addresses based on the network.
 DEFAULT_PRICE_FEED_ADDRESS = {
     "sapphire": None,
-    "sapphire-testnet": "0x91366f08C5FA8D2d0226439eb6AF4291677F8B50",
+    "sapphire-testnet": "0xB3E8721A5E9bb84Cfa99b50131Ac47341B4a9EfF",
     "sapphire-localnet": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
 }
 
@@ -182,14 +182,33 @@ class PriceOracle:
             pair.compute_feed_hash(app_id_bytes)
         ).call()
 
-        if address != '0x0000000000000000000000000000000000000000':
-            self.contracts[pair] = self.w3.eth.contract(address=address, abi=self.contract_abi, bytecode=self.contract_bytecode)
+        if address == '0x0000000000000000000000000000000000000000':
+            return
+
+        contract = self.w3.eth.contract(address=address, abi=self.contract_abi, bytecode=self.contract_bytecode)
+        self.contracts[pair] = contract
+
+        # Sanity check.
+        print("decimals:", contract.functions.decimals().call())
+        print("description:", contract.functions.description().call())
+        if contract.functions.decimals().call() == 0:
+            tx_params = contract.functions.setDecimals(NUM_DECIMALS).build_transaction({
+                'gasPrice': self.w3.eth.gas_price,
+            })
+            result = self.rofl_utility.submit_tx(tx_params)
+            print(f"Set decimals to {NUM_DECIMALS}. Result: {result}")
+
+        if contract.functions.description().call() == "":
+            tx_params = contract.functions.setDescription(str(pair)).build_transaction({
+                'gasPrice': self.w3.eth.gas_price,
+            })
+            result = self.rofl_utility.submit_tx(tx_params)
+            print(f"Set description to {str(pair)}. Result: {result}")
 
 
     def detect_or_deploy_contract(self, pair: Pair):
         # Fetch the current app ID
         app_id = self.rofl_utility.fetch_appid()
-        print("app_id: ", app_id)
         app_id_bytes = bech32_to_bytes(app_id)
 
         if pair in self.contracts:
@@ -197,7 +216,7 @@ class PriceOracle:
 
         self.detect_contract(pair, app_id_bytes)
         if pair in self.contracts:
-            print(f"Detected aggregator contract {self.contracts[pair].address}")
+            print(f"Detected aggregator contract {self.contracts[pair].address} for {pair}")
             return
 
         # Deploy the contract implicitly by calling add_feed().
@@ -215,18 +234,6 @@ class PriceOracle:
         if pair in self.contracts:
             contract = self.contracts[pair]
             print(f"Detected aggregator contract {contract.address}")
-
-            contract.functions.setDecimals(NUM_DECIMALS).build_transaction({
-                'gasPrice': self.w3.eth.gas_price,
-            })
-            result = self.rofl_utility.submit_tx(tx_params)
-            print(f"Set decimals to {NUM_DECIMALS}. Result: {result}")
-
-            contract.functions.setDescription(str(pair)).build_transaction({
-                'gasPrice': self.w3.eth.gas_price,
-            })
-            result = self.rofl_utility.submit_tx(tx_params)
-            print(f"Set description to {str(pair)}. Result: {result}")
         else:
             print(f"Aggregator contract not available. Aborting.")
             exit(2)
@@ -246,8 +253,13 @@ class PriceOracle:
         while True:
             round_id+=1
             price = await EXCHANGE_FETCHERS[pair.exchange](pair.pair_base, pair.pair_quote)
-            obs = (int(price * 10**num_decimals), int(asyncio.get_event_loop().time()))
+            if price is None or price == 0:
+                print(f"warning: {pair} price invalid: {price}. Ignoring.")
+                await asyncio.sleep(self.fetch_period)
+                continue
+
             print(f"{pair} price: ${price:.10f}")
+            obs = (int(price * 10**num_decimals), int(asyncio.get_event_loop().time()))
             observations.append(obs)
 
             if asyncio.get_event_loop().time() - last_submit > self.submit_period:

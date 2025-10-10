@@ -84,3 +84,21 @@ Python price oracle lives in the `oracle` folder.
    ```shell
    ./main.py --network sapphire-testnet
    ```
+
+## Running contract tests
+
+1. Compile sapphire-foundry precompiles:
+   
+   ```shell
+   cd contracts/dependencies/@oasisprotocol-sapphire-foundry-0.1.2/precompiles
+   cargo build --release
+   ```
+
+2. Now you can run the tests:
+
+   ```shell
+   cd contracts
+   forge test
+   ```
+
+For more info see https://docs.oasis.io/build/tools/foundry

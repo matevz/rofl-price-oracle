@@ -24,13 +24,10 @@ class ContractUtility:
         self.network = networks[network_name] if network_name in networks else network_name
 
         w3 = Web3(Web3.WebsocketProvider(self.network) if self.network.startswith("ws:") else Web3.HTTPProvider(self.network))
-        if network_name == "sapphire-localnet":
-            account: LocalAccount = Account.from_key("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
-            w3.middleware_onion.add(SignAndSendRawMiddlewareBuilder.build(account))
-            self.w3 = sapphire.wrap(w3, account)
-            self.w3.eth.default_account = account.address
-
-        self.w3 = sapphire.wrap(w3)
+        account: LocalAccount = Account.from_key("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+        w3.middleware_onion.add(SignAndSendRawMiddlewareBuilder.build(account))
+        self.w3 = sapphire.wrap(w3, account) # Test account should be used for sapphire-localnet only. Workaround for: https://github.com/oasisprotocol/sapphire-paratime/issues/637
+        self.w3.eth.default_account = account.address
 
     def get_contract(contract_name: str) -> (str, str):
         """Fetches ABI of the given contract from the contracts folder"""

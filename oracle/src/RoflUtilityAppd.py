@@ -25,7 +25,7 @@ class RoflUtilityAppd(RoflUtility):
         client = httpx.Client(transport=transport)
 
         url = self.url if self.url and self.url.startswith('http') else "http://localhost"
-        print(f"  Getting {json.dumps(params)} to {url+path}")
+        print(f"  Getting {params} from {url+path}")
         response = client.get(url + path, params=params, timeout=None)
         response.raise_for_status()
         return response
