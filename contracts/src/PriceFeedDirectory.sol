@@ -17,7 +17,7 @@ contract PriceFeedDirectory {
     error AggregatorExists(bytes32 key);
     error AggregatorRoflAppIdMismatch();
 
-    event FeedAdded(address indexed aggregator, bytes32 key, string providerChainPair);
+    event FeedAdded(address indexed aggregator, string appProviderChainPair);
 
     // Maps the hashed and lowercase hex-encoded app ID (without leading 0x), price provider hostname, (optional) chain and trading pair (or contract address without leading 0x) separated by / to the data feed.
     // Key examples:
@@ -27,7 +27,7 @@ contract PriceFeedDirectory {
     mapping(bytes32 => RoflAggregatorV3Interface) public feeds;
 
     // List of public ROFL-powered aggregator contracts.
-    RoflAggregatorV3Interface[] public discoverableFeeds;
+    string[] public discoverableFeeds;
 
     // Adds a new ROFL-powered price aggregator feed smart contract.
     // @param providerChainPair Hashed value of the exchange hostname + / + the
@@ -55,9 +55,10 @@ contract PriceFeedDirectory {
         // Convert roflAppId bytes to lowercase hex string (without 0x prefix).
         // Inspired by https://github.com/OpenZeppelin/openzeppelin-contracts/blob/92033fc08df1c8ebeb8046d084dd24e82ba9d065/contracts/utils/Strings.sol#L85
         bytes memory roflAppIdHex = new bytes(42);
+        bytes21 roflAppIdBits = roflAppId;
         for (int8 i = 41; i >= 0; --i) {
-            roflAppIdHex[uint8(i)] = HEX_DIGITS[uint168(roflAppId) & 0xf];
-            roflAppId >>= 4;
+            roflAppIdHex[uint8(i)] = HEX_DIGITS[uint168(roflAppIdBits) & 0xf];
+            roflAppIdBits >>= 4;
         }
 
         // Create the key by combining roflAppIdHex with providerChainPair
@@ -73,10 +74,11 @@ contract PriceFeedDirectory {
 
         feeds[key] = agg;
 
+        string memory appProviderChainPair = string(abi.encodePacked(roflAppIdHex, "/", providerChainPair));
         if (discoverable) {
-            discoverableFeeds.push(agg);
+            discoverableFeeds.push(appProviderChainPair);
         }
 
-        emit FeedAdded(address(agg), key, providerChainPair);
+        emit FeedAdded(address(agg), appProviderChainPair);
     }
 }

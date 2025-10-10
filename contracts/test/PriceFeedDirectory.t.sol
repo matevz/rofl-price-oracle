@@ -18,17 +18,12 @@ contract PriceFeedDirectoryTest is SapphireTest {
     }
 
     function test_addFeed_existing_agg() public {
-        priceFeed.addFeed("bitstamp.net/btc_usd", simpleAggr, false);
-        bytes32 hash = keccak256("000000000000000000000000000000000000000000/bitstamp.net/btc_usd");
+        priceFeed.addFeed("bitstamp.net/btc/usd", simpleAggr, false);
+        bytes32 hash = keccak256("000000000000000000000000000000000000000000/bitstamp.net/btc/usd");
         assertEq(address(priceFeed.feeds(hash)), address(simpleAggr), "feed not stored");
-
-        priceFeed.addFeed("binance.com/btc_usd", simpleAggr, true);
-        hash = keccak256("000000000000000000000000000000000000000000/binance.com/btc_usd");
-        assertEq(address(priceFeed.feeds(hash)), address(simpleAggr), "feed not stored");
-        assertEq(address(simpleAggr), address(priceFeed.discoverableFeeds(0)), "feed not discoverable");
 
         vm.expectRevert();
-        priceFeed.addFeed("bitstamp.net/btc_usd", simpleAggr, false);
+        priceFeed.addFeed("bitstamp.net/btc/usd", simpleAggr, false);
     }
 
     function test_addFeed_new_agg() public {
@@ -37,24 +32,53 @@ contract PriceFeedDirectoryTest is SapphireTest {
         assertNotEq(address(priceFeed.feeds(hash)), address(0), "new feed not deployed");
     }
 
+    function test_addFeed_discoverable() public {
+        priceFeed.addFeed("bitstamp.net/btc/usd", simpleAggr, true);
+        string memory app_pair = priceFeed.discoverableFeeds(0);
+        assertEq(app_pair, "000000000000000000000000000000000000000000/bitstamp.net/btc/usd", "feed not discoverable");
+        assertEq(address(simpleAggr), address(priceFeed.feeds(keccak256(bytes(app_pair)))), "discoverable feed not stored");
+    }
+
     function test_submitObservation() public {
-        // Test submitting an observation
         uint80 roundId = 100;
-        int256 ans = 50000 * 1e8; // $50,000 with 8 decimals
-        uint256 started = block.timestamp;
-        uint256 updated = block.timestamp+1;
+        int256 ans = 50000 * 1e8; // $50,000 with 8 decimals.
+        uint256 started = block.timestamp-1;
+        uint256 updated = block.timestamp;
 
-        // Submit observation to the simple aggregator
         simpleAggr.submitObservation(roundId, ans, started, updated);
-
-        // Verify the observation was stored correctly
         (uint80 storedRoundId, int256 storedAns, uint256 storedStarted, uint256 storedUpdated, uint80 storedInRound) = simpleAggr.latestRoundData();
         assertEq(storedRoundId, roundId, "roundId mismatch");
         assertEq(storedAns, ans, "answer mismatch");
         assertEq(storedStarted, started, "started timestamp mismatch");
         assertEq(storedUpdated, updated, "updated timestamp mismatch");
 
-        (storedRoundId, storedAns, storedStarted, storedUpdated, storedInRound) = simpleAggr.getRoundData(roundId);
+        (storedRoundId, storedAns, storedStarted, storedUpdated, storedInRound) = simpleAggr.getRoundData(100);
+        assertEq(storedRoundId, roundId, "roundId mismatch");
+        assertEq(storedAns, ans, "answer mismatch");
+        assertEq(storedStarted, started, "started timestamp mismatch");
+        assertEq(storedUpdated, updated, "updated timestamp mismatch");
+
+        // Now try a new round.
+        uint80 roundId2 = 101;
+        int256 ans2 = 60000 * 1e8; // $60,000 with 8 decimals.
+        uint256 started2 = block.timestamp+10;
+        uint256 updated2 = block.timestamp+11;
+
+        simpleAggr.submitObservation(roundId2, ans2, started2, updated2);
+        (storedRoundId, storedAns, storedStarted, storedUpdated, storedInRound) = simpleAggr.latestRoundData();
+        assertEq(storedRoundId, roundId2, "roundId mismatch");
+        assertEq(storedAns, ans2, "answer mismatch");
+        assertEq(storedStarted, started2, "started timestamp mismatch");
+        assertEq(storedUpdated, updated2, "updated timestamp mismatch");
+
+        (storedRoundId, storedAns, storedStarted, storedUpdated, storedInRound) = simpleAggr.getRoundData(101);
+        assertEq(storedRoundId, roundId2, "roundId mismatch");
+        assertEq(storedAns, ans2, "answer mismatch");
+        assertEq(storedStarted, started2, "started timestamp mismatch");
+        assertEq(storedUpdated, updated2, "updated timestamp mismatch");
+
+        // Test the old round again.
+        (storedRoundId, storedAns, storedStarted, storedUpdated, storedInRound) = simpleAggr.getRoundData(100);
         assertEq(storedRoundId, roundId, "roundId mismatch");
         assertEq(storedAns, ans, "answer mismatch");
         assertEq(storedStarted, started, "started timestamp mismatch");
