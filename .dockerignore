@@ -1,0 +1,2 @@
+# Don't copy over rust binaries for testing.
+contracts/dependencies/@oasisprotocol-sapphire-foundry-*/precompiles
