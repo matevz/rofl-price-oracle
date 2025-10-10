@@ -11,6 +11,12 @@ exchanges and trading pairs are supported.
 Solidity contracts for the price feed directory and a simple aggregator are 
 located in the `contracts` folder. Move to that directory, then run:  
 
+### Install dependencies
+
+```shell
+soldeer install
+```
+
 ### Localnet
 
 Localnet already has hardcoded accounts and ROFL app ids. To compile and deploy 
@@ -54,6 +60,25 @@ or
 --rpc-url https://sapphire.oasis.io
 ```
 
+### Running contract tests
+
+1. Compile sapphire-foundry precompiles:
+
+   ```shell
+   pushd contracts/dependencies/@oasisprotocol-sapphire-foundry-0.1.2/precompiles
+   cargo build --release
+   popd
+   ```
+
+2. Now you can run the tests:
+
+   ```shell
+   cd contracts
+   forge test
+   ```
+
+For more info see https://docs.oasis.io/build/tools/foundry
+
 ## Oasis price oracle
 
 Python price oracle lives in the `oracle` folder.
@@ -84,21 +109,3 @@ Python price oracle lives in the `oracle` folder.
    ```shell
    ./main.py --network sapphire-testnet
    ```
-
-## Running contract tests
-
-1. Compile sapphire-foundry precompiles:
-   
-   ```shell
-   cd contracts/dependencies/@oasisprotocol-sapphire-foundry-0.1.2/precompiles
-   cargo build --release
-   ```
-
-2. Now you can run the tests:
-
-   ```shell
-   cd contracts
-   forge test
-   ```
-
-For more info see https://docs.oasis.io/build/tools/foundry
